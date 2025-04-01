@@ -2,8 +2,8 @@ import { MiddlewareFactory } from '@backstage/backend-defaults/rootHttpRouter';
 import { LoggerService } from '@backstage/backend-plugin-api';
 import { Config } from '@backstage/config';
 import express from 'express';
-import { getLatestRunForWorkspaces, listOrgRuns } from '../lib';
-import { createOpenApiRouter } from '../schema/openapi.generated';
+import { getLatestRunForWorkspaces, listOrgRuns, getAssessmentResultsForWorkspaces } from '../lib';
+import { createOpenApiRouter } from '../schema/openapi/generated';
 
 export const DEFAULT_TF_BASE_URL = 'https://app.terraform.io';
 
@@ -55,6 +55,19 @@ export async function createRouter(
     logger.info('PONG!');
     response.json({ status: 'ok' });
   });
+
+  router.get('/organizations/:orgName/workspaces/:workspaceNames/assessment-results',
+    (request, response, next) => {
+      const organization = request.params.orgName;
+      const workspaces = request.params.workspaceNames.split(",");
+
+      getAssessmentResultsForWorkspaces({ token, baseUrl, organization, workspaces })
+        .then(assessments => {
+          response.json(assessments);
+        })
+        .catch(next);
+    },
+  )
 
   router.use(MiddlewareFactory.create(options).error());
   return router;
