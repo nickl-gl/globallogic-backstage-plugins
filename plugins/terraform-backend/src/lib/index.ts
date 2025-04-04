@@ -130,6 +130,29 @@ export const getLatestRunForWorkspaces = async (
   return latestRun[0];
 };
 
+const fetchHealthAssessmentForWorkspace = async (
+  baseUrl: string,
+  token: string,
+  workspace: TerraformWorkspace,
+) => {
+
+const currentAssessmentResultLink =  workspace?.relationships?.['current-assessment-result']?.links?.related;
+
+if (!currentAssessmentResultLink) return null;
+
+const assessmentResultUrl = new URL(currentAssessmentResultLink, baseUrl);
+console.debug(`Retrieving health assessment for workspace '${workspace.attributes.name}', url: ${ assessmentResultUrl.toString()}`);
+const terraformAssessmentResult = await axios.get<TerraformResponse<TerraformAssessmentResult>>(
+  assessmentResultUrl.toString(), 
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  },
+);
+
+return formatTerraformAssessmentResult(terraformAssessmentResult.data.data, workspace);
+
+};
+
 export const getAssessmentResultsForWorkspaces = async ({
   baseUrl,
   token,
@@ -149,14 +172,14 @@ export const getAssessmentResultsForWorkspaces = async ({
     },
   );
 
-  let terraformWorkspaces: TerraformWorkspace[] = new Array();
+  const terraformWorkspaces: TerraformWorkspace[] = [];
   workspaces.forEach(w => {
 
-    console.debug("Looking for workspace: " + w.toString());
+    console.debug(`Looking for workspace: '${w}'`);
 
-    const found = allWorkspacesForOrg.data.data.find(f => f.attributes.name.toLowerCase() == w.toString().toLowerCase());
-    if (found != undefined) {
-      console.debug("Found TerraformWorkspace for '" + w + "'");
+    const found = allWorkspacesForOrg.data.data.find(f => f.attributes.name.toLowerCase() === w.toString().toLowerCase());
+    if (found !== undefined) {
+      console.debug(`Found TerraformWorkspace for '${w}'`);
       terraformWorkspaces.push(found);
     }
   });
@@ -167,28 +190,3 @@ export const getAssessmentResultsForWorkspaces = async ({
   return results;
 
 };
-
-const fetchHealthAssessmentForWorkspace = async (
-    baseUrl: string,
-    token: string,
-    workspace: TerraformWorkspace,
-) => {
-  
-  const currentAssessmentResultLink =  workspace?.relationships?.['current-assessment-result']?.links?.related;
-
-  if (!currentAssessmentResultLink) return null;
-  
-  const assessmentResultUrl = new URL(currentAssessmentResultLink, baseUrl);
-  console.debug("Retrieving health assessment for workspace '" + workspace.attributes.name + "', url: " + assessmentResultUrl.toString());
-  const terraformAssessmentResult = await axios.get<TerraformResponse<TerraformAssessmentResult>>(
-    assessmentResultUrl.toString(), 
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-  
-  return formatTerraformAssessmentResult(terraformAssessmentResult.data.data, workspace);
-  
-};
-
-
